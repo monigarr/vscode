@@ -1,0 +1,73 @@
+/*---------------------------------------------------------------------------------------------
+ * Open-Agent chat sidebar styles
+ *--------------------------------------------------------------------------------------------*/
+
+.openagent-chat {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 8px;
+	box-sizing: border-box;
+	gap: 8px;
+}
+
+.openagent-chat-transcript {
+	flex: 1;
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.openagent-chat-bubble {
+	padding: 8px 10px;
+	border-radius: 6px;
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.openagent-chat-bubble.user {
+	background: var(--vscode-inputValidation-infoBackground, rgba(0, 120, 212, 0.15));
+	align-self: flex-end;
+	max-width: 92%;
+}
+
+.openagent-chat-bubble.assistant {
+	background: var(--vscode-editor-inactiveSelectionBackground, rgba(128, 128, 128, 0.2));
+	align-self: flex-start;
+	max-width: 96%;
+}
+
+.openagent-chat-status {
+	min-height: 1.2em;
+	font-size: 11px;
+	opacity: 0.8;
+}
+
+.openagent-chat-input-row {
+	display: flex;
+	gap: 6px;
+	align-items: flex-end;
+}
+
+.openagent-chat-input {
+	flex: 1;
+	resize: vertical;
+	min-height: 54px;
+	font-family: var(--vscode-font-family);
+	font-size: 12px;
+	background: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	border: 1px solid var(--vscode-input-border, transparent);
+	padding: 6px;
+}
+
+.openagent-chat-send {
+	padding: 6px 10px;
+	cursor: pointer;
+	background: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border: none;
+}

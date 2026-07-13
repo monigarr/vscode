@@ -476,4 +476,7 @@ import './contrib/editTelemetry/browser/editTelemetry.contribution.js';
 // Opener
 import './contrib/opener/browser/opener.contribution.js';
 
+// Open-Agent (MoniGarr fork) — keep at end of contributions region
+import './contrib/openagent/browser/openagent.contribution.js';
+
 //#endregion

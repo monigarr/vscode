@@ -1,0 +1,96 @@
+/*---------------------------------------------------------------------------------------------
+ * Open-Agent Composer panel styles
+ *--------------------------------------------------------------------------------------------*/
+
+.openagent-composer {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 8px;
+	box-sizing: border-box;
+	gap: 8px;
+}
+
+.openagent-composer-status {
+	min-height: 1.2em;
+	font-size: 11px;
+	opacity: 0.85;
+}
+
+.openagent-composer-input-row,
+.openagent-composer-actions,
+.openagent-composer-file-actions,
+.openagent-composer-hunk-actions {
+	display: flex;
+	gap: 6px;
+	align-items: flex-end;
+	flex-wrap: wrap;
+}
+
+.openagent-composer-input {
+	flex: 1;
+	resize: vertical;
+	min-height: 54px;
+	font-family: var(--vscode-font-family);
+	font-size: 12px;
+	background: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	border: 1px solid var(--vscode-input-border, transparent);
+	padding: 6px;
+}
+
+.openagent-composer-run,
+.openagent-composer-accept-all,
+.openagent-composer-file-actions button,
+.openagent-composer-hunk-actions button {
+	padding: 4px 8px;
+	cursor: pointer;
+	background: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border: none;
+	font-size: 11px;
+}
+
+.openagent-composer-list {
+	flex: 1;
+	overflow: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.openagent-composer-file {
+	border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.openagent-composer-file-header {
+	font-weight: 600;
+	font-size: 12px;
+	word-break: break-all;
+}
+
+.openagent-composer-hunk {
+	background: var(--vscode-editor-inactiveSelectionBackground, rgba(128, 128, 128, 0.15));
+	padding: 6px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.openagent-composer-hunk-meta {
+	font-size: 11px;
+	opacity: 0.85;
+}
+
+.openagent-composer-hunk-preview {
+	margin: 0;
+	max-height: 120px;
+	overflow: auto;
+	white-space: pre-wrap;
+	font-size: 11px;
+	font-family: var(--vscode-editor-font-family);
+}

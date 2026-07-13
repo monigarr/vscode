@@ -145,6 +145,8 @@ import { PlaywrightChannel } from '../../../platform/browserView/node/playwright
 import { AgentNetworkFilterService } from '../../../platform/networkFilter/common/networkFilterService.js';
 import { ILocalGitService } from '../../../platform/git/common/localGitService.js';
 import { LocalGitService } from '../../../platform/git/node/localGitService.js';
+import { IOpenAgentVectorStoreRemote, OPEN_AGENT_VECTOR_STORE_CHANNEL } from '../../../workbench/contrib/openagent/common/openAgentVectorStoreRemote.js';
+import { OpenAgentVectorStoreRemoteService } from '../../../workbench/contrib/openagent/node/openAgentVectorStoreRemoteService.js';
 
 class SharedProcessMain extends Disposable implements IClientConnectionFilter {
 
@@ -417,6 +419,7 @@ class SharedProcessMain extends Disposable implements IClientConnectionFilter {
 
 		// Local Git
 		services.set(ILocalGitService, new SyncDescriptor(LocalGitService, undefined, false /* proxied to other processes */));
+		services.set(IOpenAgentVectorStoreRemote, new SyncDescriptor(OpenAgentVectorStoreRemoteService, undefined, false /* proxied to other processes */));
 
 		// SSH Remote Agent Host
 		services.set(ISSHRemoteAgentHostMainService, new SyncDescriptor(SSHRemoteAgentHostMainService, undefined, true));
@@ -505,6 +508,10 @@ class SharedProcessMain extends Disposable implements IClientConnectionFilter {
 		// Local Git
 		const localGitChannel = ProxyChannel.fromService(accessor.get(ILocalGitService), this._store);
 		this.server.registerChannel('localGit', localGitChannel);
+
+		// Open-Agent Lance vector store
+		const openAgentVectorStoreChannel = ProxyChannel.fromService(accessor.get(IOpenAgentVectorStoreRemote), this._store);
+		this.server.registerChannel(OPEN_AGENT_VECTOR_STORE_CHANNEL, openAgentVectorStoreChannel);
 
 		// SSH Remote Agent Host
 		const sshRemoteAgentHostChannel = ProxyChannel.fromService(accessor.get(ISSHRemoteAgentHostMainService), this._store);
