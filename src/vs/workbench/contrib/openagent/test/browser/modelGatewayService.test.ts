@@ -162,6 +162,81 @@ suite('Open-Agent - ModelGatewayService', () => {
 		await helper.deleteAnthropicApiKey();
 		assert.strictEqual(await helper.getAnthropicApiKey(), undefined);
 	});
+
+	test('selecting LM Studio profile routes local_private and embed to LM Studio base URL', async () => {
+		const seenUrls: string[] = [];
+		const { gateway } = createGateway(
+			{
+				[OpenAgentConfigKeys.enabled]: true,
+				[OpenAgentConfigKeys.openAiProfileId]: OPENAI_COMPATIBLE_PROFILE_IDS.lmstudio,
+				[OpenAgentConfigKeys.openAiBaseUrl]: 'http://127.0.0.1:1234/v1',
+			},
+			{
+				request: async (options) => {
+					seenUrls.push(options.url ?? '');
+					if (options.url?.includes('/embeddings')) {
+						return {
+							res: { statusCode: 200, headers: {} },
+							stream: bufferToStream(VSBuffer.fromString(JSON.stringify({
+								data: [{ embedding: [0.1, 0.2], index: 0 }],
+								usage: { prompt_tokens: 1, total_tokens: 1 },
+							}))),
+						};
+					}
+					return {
+						res: { statusCode: 200, headers: {} },
+						stream: bufferToStream(VSBuffer.fromString(JSON.stringify({
+							choices: [{ message: { content: 'from lmstudio' }, finish_reason: 'stop' }],
+							usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+						}))),
+					};
+				},
+			},
+		);
+
+		const chat = await gateway.complete({
+			modelClass: MODEL_CLASSES.localPrivate,
+			taskType: 'generate',
+			messages: [{ role: 'user', content: 'hi' }],
+		}, CancellationToken.None);
+		assert.strictEqual(chat.profileId, OPENAI_COMPATIBLE_PROFILE_IDS.lmstudio);
+		assert.ok(seenUrls.some(u => u.startsWith('http://127.0.0.1:1234/v1/chat/completions')));
+
+		const embed = await gateway.embed({
+			modelClass: MODEL_CLASSES.embed,
+			taskType: 'embed',
+			messages: [{ role: 'user', content: 'chunk' }],
+		}, CancellationToken.None);
+		assert.strictEqual(embed.profileId, OPENAI_COMPATIBLE_PROFILE_IDS.lmstudio);
+		assert.ok(seenUrls.some(u => u.startsWith('http://127.0.0.1:1234/v1/embeddings')));
+	});
+
+	test('selecting LM Studio makes code_specialist primary local-first', async () => {
+		const { gateway } = createGateway(
+			{
+				[OpenAgentConfigKeys.enabled]: true,
+				[OpenAgentConfigKeys.openAiProfileId]: OPENAI_COMPATIBLE_PROFILE_IDS.lmstudio,
+				[OpenAgentConfigKeys.openAiBaseUrl]: 'http://127.0.0.1:1234/v1',
+			},
+			{
+				request: async (options) => {
+					assert.ok(options.url?.startsWith('http://127.0.0.1:1234/v1/'));
+					return {
+						res: { statusCode: 200, headers: {} },
+						stream: bufferToStream(VSBuffer.fromString(JSON.stringify({
+							choices: [{ message: { content: 'compose' }, finish_reason: 'stop' }],
+						}))),
+					};
+				},
+			},
+		);
+		const response = await gateway.complete({
+			modelClass: MODEL_CLASSES.codeSpecialist,
+			taskType: 'generate',
+			messages: [{ role: 'user', content: 'edit' }],
+		}, CancellationToken.None);
+		assert.strictEqual(response.profileId, OPENAI_COMPATIBLE_PROFILE_IDS.lmstudio);
+	});
 });
 
 class CapturingLogService extends NullLogService {

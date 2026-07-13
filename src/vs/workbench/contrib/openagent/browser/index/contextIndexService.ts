@@ -35,7 +35,9 @@ import { IWorkspaceContextService } from '../../../../../platform/workspace/comm
 import { DocumentSymbol } from '../../../../../editor/common/languages.js';
 import { IOutlineModelService } from '../../../../../editor/contrib/documentSymbols/browser/outlineModel.js';
 import { ITextModelService } from '../../../../common/services/resolverService.js';
-import { ISCMService } from '../../../scm/common/scm.js';
+import { ISCMProvider, ISCMResource, ISCMService } from '../../../scm/common/scm.js';
+import { boundedDiffSnippet } from '../../common/applyPatch.js';
+import { parseOpenAgentMentions } from '../../common/mentions.js';
 import { IContextIndexService, IOpenAgentMention, IResolvedContextBlock } from '../../common/contextIndex.js';
 import { MODEL_CLASSES } from '../../common/modelClasses.js';
 import { IModelGatewayService } from '../../common/modelGateway.js';
@@ -92,17 +94,7 @@ export class ContextIndexService extends Disposable implements IContextIndexServ
 	}
 
 	parseMentions(text: string): readonly IOpenAgentMention[] {
-		const mentions: IOpenAgentMention[] = [];
-		const re = /@(file|folder|git|codebase)(?:\(([^)]+)\))?/g;
-		let match: RegExpExecArray | null;
-		while ((match = re.exec(text)) !== null) {
-			mentions.push({
-				kind: match[1] as IOpenAgentMention['kind'],
-				raw: match[0],
-				arg: match[2],
-			});
-		}
-		return mentions;
+		return parseOpenAgentMentions(text);
 	}
 
 	async ensureIndexed(token: CancellationToken): Promise<void> {
@@ -227,7 +219,7 @@ export class ContextIndexService extends Disposable implements IContextIndexServ
 					blocks.push({
 						mention,
 						title: 'git',
-						body: this._buildGitContext(),
+						body: await this._buildGitContext(),
 					});
 					break;
 				}
@@ -245,8 +237,12 @@ export class ContextIndexService extends Disposable implements IContextIndexServ
 		return blocks;
 	}
 
-	private _buildGitContext(): string {
+	private async _buildGitContext(): Promise<string> {
 		const lines: string[] = [];
+		let diffBudget = GIT_CONTEXT_MAX_CHARS;
+		let filesWithDiff = 0;
+		const maxDiffFiles = 8;
+
 		for (const repo of this._scmService.repositories) {
 			const provider = repo.provider;
 			lines.push(`Repository: ${provider.label}${provider.rootUri ? ` (${provider.rootUri.fsPath || provider.rootUri.path})` : ''}`);
@@ -257,7 +253,18 @@ export class ContextIndexService extends Disposable implements IContextIndexServ
 				}
 				lines.push(`${group.label}:`);
 				for (const resource of resources) {
-					lines.push(`  - ${resource.sourceUri.fsPath || resource.sourceUri.path}`);
+					const pathLabel = resource.sourceUri.fsPath || resource.sourceUri.path;
+					lines.push(`  - ${pathLabel}`);
+					if (filesWithDiff >= maxDiffFiles || diffBudget <= 0) {
+						continue;
+					}
+					const snippet = await this._diffSnippetForResource(provider, resource);
+					if (snippet) {
+						const clipped = snippet.slice(0, Math.min(1200, diffBudget));
+						lines.push(clipped);
+						diffBudget -= clipped.length;
+						filesWithDiff += 1;
+					}
 				}
 			}
 		}
@@ -265,6 +272,35 @@ export class ContextIndexService extends Disposable implements IContextIndexServ
 			return 'No SCM repositories reported changes. Open a git workspace or stage files in Source Control.';
 		}
 		return lines.join('\n').slice(0, GIT_CONTEXT_MAX_CHARS);
+	}
+
+	private async _diffSnippetForResource(
+		provider: ISCMProvider,
+		resource: ISCMResource,
+	): Promise<string | undefined> {
+		try {
+			let original = '';
+			const originalUri = resource.multiDiffEditorOriginalUri
+				?? await provider.getOriginalResource(resource.sourceUri);
+			if (originalUri) {
+				try {
+					original = (await this._fileService.readFile(originalUri)).value.toString();
+				} catch {
+					original = '';
+				}
+			}
+			const modifiedUri = resource.multiDiffEditorModifiedUri ?? resource.sourceUri;
+			let modified = '';
+			try {
+				modified = (await this._fileService.readFile(modifiedUri)).value.toString();
+			} catch {
+				return undefined;
+			}
+			const snippet = boundedDiffSnippet(original, modified, 30);
+			return snippet || undefined;
+		} catch {
+			return undefined;
+		}
 	}
 
 	private async _loadSymbols(model: Parameters<IOutlineModelService['getOrCreate']>[0], token: CancellationToken): Promise<IChunkSymbol[] | undefined> {

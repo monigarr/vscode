@@ -16,6 +16,7 @@
 2. Set `openagent.enabled` to `true` (default is `false`).
 3. For cloud BYOK: store provider API keys via SecretStorage (not settings JSON).
 4. For local: run Ollama, **or** [LM Studio](https://lmstudio.ai/docs/app) (`lmstudio` profile). For remote-local via [LM Link](https://lmstudio.ai/link): use command **Open-Agent: Configure LM Link Endpoint** (or Select Model Profile → LM Link).
+5. **Profile selection drives routing:** choosing LM Studio / LM Link / Ollama retargets `local_private`, `embed`, and `code_specialist` traffic to that profile (local-first Composer). Health check runs after pick (warning if endpoint down; settings still saved).
 
 ## Feature flags
 
@@ -36,7 +37,7 @@
 |------------|----------|
 | Auxiliary Bar chat view | Yes |
 | Streaming via Model Gateway | Yes |
-| `@file`, `@folder`, `@codebase`, `@git` | Yes |
+| `@file`, `@folder`, `@codebase`, `@git` | Yes (`@git` includes bounded SCM diff snippets) |
 | Agent from chat (`/agent <goal>`) | Yes |
 
 ## Inline ghost text
@@ -53,11 +54,12 @@
 
 | Capability | As-built |
 |------------|----------|
-| Dedicated Composer panel | Yes |
+| Dedicated Composer panel | Yes (HITL Accept/Reject controls) |
 | `Ctrl/Cmd+I` opens Composer | Yes |
-| Diff preview | Yes |
-| Per-hunk Accept/Reject | Yes |
+| Diff preview | Yes — side-by-side TextDiffEditor review canvas |
+| Per-hunk Accept/Reject | Yes — updates the same modified text models shown in the diff editors |
 | File-level Accept/Reject | Yes |
+| Local-first when LM Studio/Ollama/LM Link selected | Yes (`code_specialist` follows selected local profile) |
 
 ## Agent loop
 
@@ -65,8 +67,9 @@
 |------------|----------|
 | ReAct multi-step loop | Yes |
 | Tools: read/write/patch/terminal/search | Yes |
+| `apply_patch` | Yes — unified-diff apply (fail closed on malformed patches) |
 | Terminal log capture (`onData`) | Yes |
-| HITL on write/shell | Yes |
+| HITL on write/shell/patch | Yes |
 | Chat-integrated agent | Yes (`/agent`) |
 | Step budget + stall escalate | Yes |
 
@@ -79,6 +82,7 @@
 | Incremental file-watcher reindex | Yes |
 | LanceDB product path (desktop shared process) | Yes (JSON fallback if native unavailable) |
 | `@codebase` search | Yes |
+| Embeddings via selected local profile (incl. LM Studio `/embeddings`) | Yes when the served model exposes embeddings |
 
 ## Privacy / telemetry
 
@@ -94,7 +98,8 @@
 |------------|----------|
 | Unified `IModelGatewayService` | Yes |
 | Ollama / OpenAI-compatible / Anthropic | Yes |
-| LM Studio + LM Link profiles + picker commands | Yes |
+| LM Studio + LM Link profiles + picker commands | Yes — picker overrides routing + base URL |
+| Health check on profile pick | Yes (non-blocking warning on failure) |
 | Hugging Face / Kaggle-compatible profiles | Yes (OpenAI-compat endpoints) |
 | SecretStorage for API keys | Yes |
 | Circuit breaker + routing eval tests | Yes |

@@ -47,6 +47,7 @@ IModelGatewayService
 ├── OpenAiCompatibleProvider (Ollama, LM Studio, LM Link, HF/Kaggle-compat, …)
 ├── AnthropicProvider
 ├── CircuitBreaker
+├── Selected profile override (`openagent.openai.profileId` → local/embed/code_specialist)
 ├── OpenAgentSecrets (SecretStorage)
 └── OpenAgentTelemetry (local ILogService model.call)
 ```
@@ -86,22 +87,25 @@ IModelGatewayService
 
 ### Composer
 
-1. `Ctrl/Cmd+I` opens Composer ViewPane.
-2. Gateway proposes multi-file edits; diff editors open.
-3. Panel supports file-level and **per-hunk** Accept/Reject.
+1. `Ctrl/Cmd+I` opens Composer ViewPane (HITL controls).
+2. Gateway proposes multi-file edits via `code_specialist` (follows selected local profile when local).
+3. Side-by-side TextDiffEditor opens on shared in-memory models; panel Accept/Reject mutates those same buffers.
+4. Panel supports file-level and **per-hunk** Accept/Reject.
 
 ### Agent loop
 
 1. Palette or chat `/agent` runs `IAgentLoopService.run(goal)`.
 2. HITL dialog (or callback) before `write_file` / `apply_patch` / `run_terminal`.
-3. Terminal tool captures `onData` until quiet or `openagent.agent.terminalTimeoutMs`.
-4. Stall detection escalates when observations repeat.
+3. `apply_patch` applies unified diffs via `common/applyPatch.ts` (fail closed).
+4. Terminal tool captures `onData` until quiet or `openagent.agent.terminalTimeoutMs`.
+5. Stall detection escalates when observations repeat.
 
 ### Indexing
 
 1. Document-symbol chunking with heuristic fallback, executed on an `IWebWorkerService` chunk worker (`OpenAgentIndexChunkClient`).
-2. Embeddings via gateway `embed` on the host; incremental `IFileService` watchers.
-3. Desktop Lance via shared-process remote; JSON/memory fallback otherwise.
+2. Embeddings via gateway `embed` on the host (follows selected local profile, including LM Studio `/embeddings`).
+3. Incremental `IFileService` watchers; `@git` injects paths plus bounded SCM diffs.
+4. Desktop Lance via shared-process remote; JSON/memory fallback otherwise.
 
 ## 5. Trust & fail-closed posture
 

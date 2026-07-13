@@ -19,6 +19,7 @@
  *
  * AI NOTES:
  * - Multi-file proposals via gateway; hunk-level HITL in Composer panel.
+ * - Panel = HITL controls; TextDiffEditor buffers share the same modified models.
  * =============================================================================
  */
 
@@ -28,11 +29,13 @@ import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { generateUuid } from '../../../../../base/common/uuid.js';
 import { VSBuffer } from '../../../../../base/common/buffer.js';
+import { ITextModel } from '../../../../../editor/common/model.js';
+import { IModelService } from '../../../../../editor/common/services/model.js';
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
-import { IComposerFileEdit, IComposerHunk, IComposerService, IComposerSession } from '../../common/composer.js';
+import { IComposerHunk, IComposerService, IComposerSession } from '../../common/composer.js';
 import { IContextIndexService } from '../../common/contextIndex.js';
 import { MODEL_CLASSES } from '../../common/modelClasses.js';
 import { IModelGatewayService } from '../../common/modelGateway.js';
@@ -48,6 +51,8 @@ interface IMutableEdit {
 	proposed: string;
 	accepted: boolean;
 	hunks: IMutableHunk[];
+	originalModel?: ITextModel;
+	modifiedModel?: ITextModel;
 }
 
 interface IMutableSession {
@@ -73,6 +78,7 @@ export class ComposerService extends Disposable implements IComposerService {
 		@IFileService private readonly _fileService: IFileService,
 		@IWorkspaceContextService private readonly _workspaceService: IWorkspaceContextService,
 		@IEditorService private readonly _editorService: IEditorService,
+		@IModelService private readonly _modelService: IModelService,
 	) {
 		super();
 	}
@@ -134,9 +140,21 @@ export class ComposerService extends Disposable implements IComposerService {
 		this._activeSessionId = session.id;
 
 		for (const edit of edits) {
+			const originalResource = URI.from({
+				scheme: 'openagent-composer',
+				authority: 'original',
+				path: `/${session.id}/${encodeURIComponent(edit.uri.path)}`,
+			});
+			const modifiedResource = URI.from({
+				scheme: 'openagent-composer',
+				authority: 'modified',
+				path: `/${session.id}/${encodeURIComponent(edit.uri.path)}`,
+			});
+			edit.originalModel = this._modelService.createModel(edit.original, null, originalResource);
+			edit.modifiedModel = this._modelService.createModel(edit.proposed, null, modifiedResource);
 			await this._editorService.openEditor({
-				original: { resource: undefined, contents: edit.original },
-				modified: { resource: undefined, contents: edit.proposed },
+				original: { resource: originalResource },
+				modified: { resource: modifiedResource },
 				label: `Open-Agent: ${edit.uri.path}`,
 				options: { pinned: true },
 			});
@@ -160,6 +178,7 @@ export class ComposerService extends Disposable implements IComposerService {
 		for (const hunk of edit.hunks) {
 			hunk.accepted = true;
 		}
+		this._syncDiffModels(edit);
 		this._onDidChangeSession.fire(sessionId);
 	}
 
@@ -167,6 +186,10 @@ export class ComposerService extends Disposable implements IComposerService {
 		const session = this._sessions.get(sessionId);
 		if (!session) {
 			return;
+		}
+		const edit = session.edits.find(e => e.uri.toString() === uri.toString());
+		if (edit) {
+			this._disposeEditModels(edit);
 		}
 		session.edits = session.edits.filter(e => e.uri.toString() !== uri.toString());
 		this._onDidChangeSession.fire(sessionId);
@@ -181,6 +204,7 @@ export class ComposerService extends Disposable implements IComposerService {
 		}
 		hunk.accepted = true;
 		edit.proposed = rebuildProposedFromHunks(edit.original, edit.hunks);
+		this._syncDiffModels(edit);
 		if (edit.hunks.every(h => h.accepted === true)) {
 			await this._fileService.writeFile(uri, VSBuffer.fromString(edit.proposed));
 			edit.accepted = true;
@@ -197,7 +221,9 @@ export class ComposerService extends Disposable implements IComposerService {
 		}
 		hunk.accepted = false;
 		edit.proposed = rebuildProposedFromHunks(edit.original, edit.hunks);
+		this._syncDiffModels(edit);
 		if (edit.hunks.every(h => h.accepted === false)) {
+			this._disposeEditModels(edit);
 			session.edits = session.edits.filter(e => e.uri.toString() !== uri.toString());
 		}
 		this._onDidChangeSession.fire(sessionId);
@@ -222,6 +248,18 @@ export class ComposerService extends Disposable implements IComposerService {
 
 	getActiveSession(): IComposerSession | undefined {
 		return this._activeSessionId ? this.getSession(this._activeSessionId) : undefined;
+	}
+
+	private _syncDiffModels(edit: IMutableEdit): void {
+		edit.modifiedModel?.setValue(edit.proposed);
+		edit.originalModel?.setValue(edit.original);
+	}
+
+	private _disposeEditModels(edit: IMutableEdit): void {
+		edit.originalModel?.dispose();
+		edit.modifiedModel?.dispose();
+		edit.originalModel = undefined;
+		edit.modifiedModel = undefined;
 	}
 
 	private _toPublic(session: IMutableSession): IComposerSession {
@@ -267,7 +305,6 @@ export function computeHunks(original: string, proposed: string): IMutableHunk[]
 			accepted: undefined,
 		}];
 	}
-	// Simple whole-file hunk plus optional mid-file splits on large diffs.
 	const hunks: IMutableHunk[] = [];
 	const maxBlock = 40;
 	let o = 0;
@@ -284,7 +321,6 @@ export function computeHunks(original: string, proposed: string): IMutableHunk[]
 		const pStart = p;
 		let oEnd = Math.min(origLines.length, oStart + maxBlock);
 		let pEnd = Math.min(propLines.length, pStart + maxBlock);
-		// Grow until next matching line or end.
 		while (oEnd < origLines.length && pEnd < propLines.length && origLines[oEnd] !== propLines[pEnd]) {
 			oEnd += 1;
 			pEnd += 1;
@@ -314,7 +350,6 @@ export function computeHunks(original: string, proposed: string): IMutableHunk[]
 }
 
 function rebuildProposedFromHunks(original: string, hunks: readonly IMutableHunk[]): string {
-	// Apply accepted hunks in order; pending hunks keep proposed; rejected keep original.
 	if (!hunks.length) {
 		return original;
 	}
@@ -328,7 +363,6 @@ function rebuildProposedFromHunks(original: string, hunks: readonly IMutableHunk
 		if (hunk.accepted === false) {
 			parts.push(hunk.originalText);
 		} else {
-			// accepted or pending — use proposed until rejected
 			parts.push(hunk.proposedText);
 		}
 		cursor = hunk.endLineOriginal + 1;

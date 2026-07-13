@@ -24,7 +24,7 @@ Product refs: [LM Studio docs](https://lmstudio.ai/docs/app) · [LM Link](https:
 |---------|--------|------|---------------|
 | **LM Studio** local OpenAI-compatible profile (`lmstudio`, default `http://127.0.0.1:1234/v1`) | **Implemented** | 0 | Profile + health path; picker command |
 | LM Studio as primary local runtime in operator docs | **Implemented** | 0 | Runbook + FEATURES list LM Studio alongside Ollama |
-| LM Studio embeddings when model serves `/embeddings` | **Partial** / TBD per model | 1–4 | Document which tasks work with LM Studio embed models |
+| LM Studio embeddings when model serves `/embeddings` | **Implemented** | 1–4 | Selected local profile drives embed route; RUNBOOK notes embed models |
 | **LM Link** — use models on linked remote devices via reachable OpenAI-compatible URL | **Implemented** | 4 | `lmlink` profile + Configure LM Link Endpoint command |
 | LM Link privacy posture (user-owned mesh only) | **Implemented** | 4 | SECURITY + RUNBOOK + ADR-0004 |
 | Settings / profile picker discoverability for LM Studio + LM Link endpoints | **Implemented** | 4 | F1: Select Model Profile / Configure LM Link Endpoint |

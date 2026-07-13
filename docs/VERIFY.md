@@ -19,6 +19,18 @@ Local / PR verification before claiming an Open-Agent change is ready.
 - [ ] No secrets committed
 - [ ] Unit tests added/updated for logic changes; relevant openagent tests run locally
 - [ ] Routing eval: `test/browser/routingEval.test.ts` green when touching routing/profiles
+- [ ] Profile override: `modelGatewayService.test.ts` LM Studio local_private / embed / code_specialist cases green when touching gateway routing
+- [ ] `applyPatch.test.ts` green when touching `common/applyPatch.ts` or agent `apply_patch`
+
+## 2026-07-13 PRD closure note
+
+Unit tests for profile-driven LM Studio routing, `applyUnifiedDiff`, and production mention parsing were added under `src/vs/workbench/contrib/openagent/test/browser/`. This machine did not have `node_modules` installed during the closure pass — re-run after `npm ci` / `npm install`:
+
+```bash
+npm run test-browser-no-install -- --grep Open-Agent
+```
+
+(or the repo’s equivalent mocha filter for `openagent/test/browser`).
 
 ## Gateway / provider PRs
 

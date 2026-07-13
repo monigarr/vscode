@@ -14,9 +14,10 @@
 2. Settings → set `openagent.enabled` = `true`.
 3. Ensure desired surface flags (`chat`, `inline`, `index`, `composer`, `agent`) are on.
 4. **Local path (Ollama):** start Ollama; confirm `openagent.ollama.baseUrl` and model id.
-5. **Local path (LM Studio):** start [LM Studio](https://lmstudio.ai/docs/app), load a model, enable the local OpenAI-compatible server; run **Open-Agent: Select Model Profile** → LM Studio (default `http://127.0.0.1:1234/v1`).
-6. **LM Link:** link devices in LM Studio per [LM Link](https://lmstudio.ai/link); run **Open-Agent: Configure LM Link Endpoint** and paste the mesh-reachable OpenAI-compatible base URL. Open-Agent does not proxy through MoniGarr.
-7. **BYOK path:** store OpenAI-compatible and/or Anthropic keys in SecretStorage (never paste into settings JSON).
+5. **Local path (LM Studio):** start [LM Studio](https://lmstudio.ai/docs/app), load a model, enable the local OpenAI-compatible server; run **Open-Agent: Select Model Profile** → LM Studio (default `http://127.0.0.1:1234/v1`). A health check hits `/models` after selection (warning if down; settings still saved).
+6. **LM Studio embeddings:** load an embedding-capable model in LM Studio that serves OpenAI-compatible `/embeddings`. With the LM Studio profile selected, Open-Agent `embed` / `@codebase` indexing uses that endpoint (`openagent.embed.model` must match the served embed model id). Chat/completions models and embed models may differ — switch or load both in LM Studio as needed.
+7. **LM Link:** link devices in LM Studio per [LM Link](https://lmstudio.ai/link); run **Open-Agent: Configure LM Link Endpoint** and paste the mesh-reachable OpenAI-compatible base URL. Open-Agent does not proxy through MoniGarr.
+8. **BYOK path:** store OpenAI-compatible and/or Anthropic keys in SecretStorage (never paste into settings JSON).
 
 ## Common failures
 
@@ -25,6 +26,7 @@
 | No responses / immediate fail | `openagent.enabled` false | Enable master flag |
 | Connection errors to Ollama | Server down / wrong base URL | Check `127.0.0.1:11434` and `/v1` profile |
 | Connection errors to LM Studio | Server not started / wrong port | Enable LM Studio local server; check `127.0.0.1:1234/v1` |
+| Health check warning after profile pick | Local server down / wrong URL | Start LM Studio/Ollama; fix base URL; settings remain saved |
 | LM Link endpoint unreachable | Mesh/link not established | Verify LM Link status in LM Studio; confirm base URL from the linked host |
 | 401 from cloud | Missing/invalid secret | Re-set SecretStorage key |
 | Slow inline | Model latency + debounce | Use local small model; tune `openagent.inline.debounceMs` (default 100) |

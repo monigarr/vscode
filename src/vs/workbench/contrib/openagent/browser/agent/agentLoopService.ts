@@ -33,6 +33,7 @@ import { ILogService } from '../../../../../platform/log/common/log.js';
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
 import { ITerminalService } from '../../../terminal/browser/terminal.js';
 import { AGENT_TOOL_IDS, AgentToolId, IAgentLoopService, IAgentRunOptions, IAgentRunResult, IAgentStep, toolRequiresHitl } from '../../common/agentLoop.js';
+import { applyUnifiedDiff } from '../../common/applyPatch.js';
 import { IContextIndexService } from '../../common/contextIndex.js';
 import { MODEL_CLASSES } from '../../common/modelClasses.js';
 import { IModelGatewayService } from '../../common/modelGateway.js';
@@ -84,7 +85,8 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
 					'Respond using exactly one of these forms per turn:',
 					'THOUGHT: ...',
 					'ACTION: read_file|write_file|apply_patch|run_terminal|search_codebase',
-					'ARGS: {"path":"...","content":"...","command":"...","query":"..."}',
+					'ARGS: {"path":"...","content":"...","patch":"@@ ... unified diff ...","command":"...","query":"..."}',
+					'For apply_patch, ARGS.patch must be a unified diff with @@ hunks (not the full file).',
 					'OR',
 					'THOUGHT: ...',
 					'FINAL: <answer to the user>',
@@ -226,15 +228,38 @@ export class AgentLoopService extends Disposable implements IAgentLoopService {
 					const file = await this._fileService.readFile(uri);
 					return file.value.toString().slice(0, 12000);
 				}
-				case AGENT_TOOL_IDS.writeFile:
+				case AGENT_TOOL_IDS.writeFile: {
+					const uri = this._toUri(args.path);
+					if (!uri) {
+						return 'Error: missing path';
+					}
+					const content = args.content ?? '';
+					await this._fileService.writeFile(uri, VSBuffer.fromString(content));
+					return `Wrote ${uri.toString()} (${content.length} chars)`;
+				}
 				case AGENT_TOOL_IDS.applyPatch: {
 					const uri = this._toUri(args.path);
 					if (!uri) {
 						return 'Error: missing path';
 					}
-					const content = args.content ?? args.patch ?? '';
-					await this._fileService.writeFile(uri, VSBuffer.fromString(content));
-					return `Wrote ${uri.toString()} (${content.length} chars)`;
+					const patch = args.patch ?? args.content ?? '';
+					if (!patch.trim()) {
+						return 'Error: missing patch';
+					}
+					let original = '';
+					try {
+						original = (await this._fileService.readFile(uri)).value.toString();
+					} catch {
+						return `Error: cannot read ${uri.toString()} to apply patch`;
+					}
+					try {
+						const next = applyUnifiedDiff(original, patch);
+						await this._fileService.writeFile(uri, VSBuffer.fromString(next));
+						return `Applied patch to ${uri.toString()} (${original.length} → ${next.length} chars)`;
+					} catch (err) {
+						const message = err instanceof Error ? err.message : String(err);
+						return `Error applying patch: ${message}`;
+					}
 				}
 				case AGENT_TOOL_IDS.runTerminal: {
 					const command = args.command;

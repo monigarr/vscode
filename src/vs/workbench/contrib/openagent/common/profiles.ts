@@ -218,3 +218,34 @@ export function getOpenAiCompatibleProfile(id: string): IOpenAiCompatibleProfile
 export function isLocalResidencyProfile(profile: IOpenAiCompatibleProfile): boolean {
 	return profile.residency === 'local';
 }
+
+export function isLocalOpenAiCompatibleProfileId(id: string): boolean {
+	if (!isOpenAiCompatibleProfileId(id)) {
+		return false;
+	}
+	return isLocalResidencyProfile(getOpenAiCompatibleProfile(id));
+}
+
+/**
+ * Whether `openagent.openai.profileId` should retarget this openai-compatible route pin.
+ * Local selection drives local_private / embed / code_specialist pins; cloud selection drives cloud pins.
+ */
+export function shouldOverrideProfilePin(
+	selectedProfileId: OpenAiCompatibleProfileId,
+	pinnedProfileId: OpenAiCompatibleProfileId | undefined,
+): boolean {
+	const selectedLocal = isLocalOpenAiCompatibleProfileId(selectedProfileId);
+	if (!pinnedProfileId) {
+		return true;
+	}
+	const pinnedLocal = isLocalOpenAiCompatibleProfileId(pinnedProfileId);
+	if (selectedLocal) {
+		// Local picker retargets local pins and cloud coding pins (local-first code_specialist).
+		return pinnedLocal || pinnedProfileId === OPENAI_COMPATIBLE_PROFILE_IDS.openai
+			|| pinnedProfileId === OPENAI_COMPATIBLE_PROFILE_IDS.custom
+			|| pinnedProfileId === OPENAI_COMPATIBLE_PROFILE_IDS.huggingfaceCompatible
+			|| pinnedProfileId === OPENAI_COMPATIBLE_PROFILE_IDS.kaggleCompatible;
+	}
+	// Cloud picker only retargets non-local pins.
+	return !pinnedLocal;
+}

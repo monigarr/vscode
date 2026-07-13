@@ -52,7 +52,7 @@ Every response carries `gatewayRequestId`, `providerId`, `profileId`, `modelClas
 |---------|---------|
 | `read_file` | Read workspace file |
 | `write_file` | Write workspace file |
-| `apply_patch` | Apply patch |
+| `apply_patch` | Apply unified-diff patch (not full-file overwrite) |
 | `run_terminal` | Run command in integrated terminal |
 | `search_codebase` | Semantic / index search |
 
@@ -74,7 +74,7 @@ From `common/openAgent.ts` (`OpenAgentConfigKeys`):
 | `openagent.ollama.defaultModel` | `llama3.2` |
 | `openagent.openai.baseUrl` | `https://api.openai.com/v1` |
 | `openagent.openai.defaultModel` | `gpt-4o-mini` |
-| `openagent.openai.profileId` | `openai` (enum of compat profiles) |
+| `openagent.openai.profileId` | `openai` — **selected primary OpenAI-compatible profile**; local ids retarget `local_private` / `embed` / `code_specialist` |
 | `openagent.anthropic.baseUrl` | `https://api.anthropic.com` |
 | `openagent.anthropic.defaultModel` | `claude-sonnet-4-20250514` |
 | `openagent.embed.model` | `nomic-embed-text` |
@@ -93,8 +93,9 @@ From `common/openAgent.ts` (`OpenAgentConfigKeys`):
 
 ## OpenAI-compatible profile ids
 
-`ollama`, `openai`, `openrouter`, `deepseek`, `groq`, `together`, `fireworks`, `lmstudio`, `llamacpp`, `huggingface_compatible`, `custom` — see `common/profiles.ts`.
+`ollama`, `openai`, `openrouter`, `deepseek`, `groq`, `together`, `fireworks`, `lmstudio`, `lmlink`, `llamacpp`, `huggingface_compatible`, `kaggle_compatible`, `custom` — see `common/profiles.ts`.
 
+**Override semantics:** `openagent.openai.profileId` is the operator-selected primary profile. When it is a local residency profile (`ollama` | `lmstudio` | `lmlink` | `llamacpp`), the gateway retargets `local_private`, `private_onprem`, `embed`, and primary `code_specialist` candidates to that profile and prefers `openagent.openai.baseUrl` (except Ollama, which uses `openagent.ollama.baseUrl`). Cloud profile selection retargets non-local openai-compatible pins only.
 ## View / contrib ids
 
 | Constant | Value |

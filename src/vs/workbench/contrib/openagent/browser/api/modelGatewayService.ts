@@ -65,11 +65,15 @@ import {
 	OPEN_AGENT_DEFAULT_TIMEOUT_MS,
 	OpenAgentConfigKeys,
 } from '../../common/openAgent.js';
+import { MODEL_CLASSES } from '../../common/modelClasses.js';
 import {
 	getOpenAiCompatibleProfile,
 	IOpenAiCompatibleProfile,
+	isLocalOpenAiCompatibleProfileId,
+	isOpenAiCompatibleProfileId,
 	OPENAI_COMPATIBLE_PROFILE_IDS,
 	OpenAiCompatibleProfileId,
+	shouldOverrideProfilePin,
 } from '../../common/profiles.js';
 import { PROVIDER_IDS, ProviderId } from '../../common/providers.js';
 import {
@@ -394,25 +398,54 @@ export class ModelGatewayService extends Disposable implements IModelGatewayServ
 			|| OPEN_AGENT_DEFAULT_OPENAI_MODEL;
 		const anthropicModel = this._configurationService.getValue<string>(OpenAgentConfigKeys.anthropicDefaultModel)
 			|| OPEN_AGENT_DEFAULT_ANTHROPIC_MODEL;
-		const configuredCloudProfile = this._configurationService.getValue<string>(OpenAgentConfigKeys.openAiProfileId)
+		const embedModel = this._configurationService.getValue<string>(OpenAgentConfigKeys.embedModel)
+			|| OPEN_AGENT_DEFAULT_EMBED_MODEL;
+		const selectedRaw = this._configurationService.getValue<string>(OpenAgentConfigKeys.openAiProfileId)
 			|| OPENAI_COMPATIBLE_PROFILE_IDS.openai;
+		const selectedProfileId: OpenAiCompatibleProfileId = isOpenAiCompatibleProfileId(selectedRaw)
+			? selectedRaw
+			: OPENAI_COMPATIBLE_PROFILE_IDS.openai;
+		const selectedLocal = isLocalOpenAiCompatibleProfileId(selectedProfileId);
+		const selectedProfile = getOpenAiCompatibleProfile(selectedProfileId);
 
-		const applyConfiguredModel = (target: IRoutingTarget): IRoutingTarget => {
+		const applyConfiguredModel = (target: IRoutingTarget, isPrimary: boolean): IRoutingTarget => {
 			if (request.pin?.providerModelId && target.providerId === (request.pin.providerId ?? target.providerId)) {
 				return target;
 			}
 			switch (target.providerId) {
 				case PROVIDER_IDS.openaiCompatible: {
-					const resolvedProfileId = (target.profileId
-						?? (configuredCloudProfile as OpenAiCompatibleProfileId)) as OpenAiCompatibleProfileId;
-					const local = resolvedProfileId === OPENAI_COMPATIBLE_PROFILE_IDS.ollama
-						|| resolvedProfileId === OPENAI_COMPATIBLE_PROFILE_IDS.lmstudio
-						|| resolvedProfileId === OPENAI_COMPATIBLE_PROFILE_IDS.lmlink
-						|| resolvedProfileId === OPENAI_COMPATIBLE_PROFILE_IDS.llamacpp;
+					let resolvedProfileId = (target.profileId ?? selectedProfileId) as OpenAiCompatibleProfileId;
+					let overrode = false;
+					if (shouldOverrideProfilePin(selectedProfileId, target.profileId)) {
+						const retargetPrimary = isPrimary && (
+							request.modelClass === MODEL_CLASSES.localPrivate
+							|| request.modelClass === MODEL_CLASSES.privateOnprem
+							|| request.modelClass === MODEL_CLASSES.embed
+							|| request.modelClass === MODEL_CLASSES.codeSpecialist
+							|| (target.profileId !== undefined && isLocalOpenAiCompatibleProfileId(target.profileId))
+						);
+						const retargetFallbackLocal = !isPrimary && selectedLocal
+							&& target.profileId !== undefined
+							&& isLocalOpenAiCompatibleProfileId(target.profileId);
+						const retargetCloud = !selectedLocal && shouldOverrideProfilePin(selectedProfileId, target.profileId);
+						if (retargetPrimary || retargetFallbackLocal || retargetCloud) {
+							resolvedProfileId = selectedProfileId;
+							overrode = true;
+						}
+					}
+					const local = isLocalOpenAiCompatibleProfileId(resolvedProfileId);
+					let providerModelId = target.providerModelId;
+					if (overrode) {
+						providerModelId = request.modelClass === MODEL_CLASSES.embed
+							? (embedModel || selectedProfile.defaultModel)
+							: (selectedProfile.defaultModel || (local ? ollamaModel : openAiModel));
+					} else if (!providerModelId) {
+						providerModelId = local ? ollamaModel : openAiModel;
+					}
 					return {
 						...target,
 						profileId: resolvedProfileId,
-						providerModelId: target.providerModelId || (local ? ollamaModel : openAiModel),
+						providerModelId,
 					};
 				}
 				case PROVIDER_IDS.anthropic:
@@ -424,10 +457,30 @@ export class ModelGatewayService extends Disposable implements IModelGatewayServ
 			}
 		};
 
-		const primary = applyConfiguredModel(route.target);
-		const fallbacks = filterFallbacksForPrivacy(
+		let primary = applyConfiguredModel(route.target, true);
+		let fallbacks = route.fallbacks.map(f => applyConfiguredModel(f, false));
+
+		// When local profile is selected for code_specialist, keep original cloud pin as a privacy-allowed fallback.
+		if (
+			selectedLocal
+			&& request.modelClass === MODEL_CLASSES.codeSpecialist
+			&& route.target.profileId
+			&& !isLocalOpenAiCompatibleProfileId(route.target.profileId)
+			&& primary.profileId === selectedProfileId
+		) {
+			fallbacks = [
+				{
+					providerId: route.target.providerId,
+					profileId: route.target.profileId,
+					providerModelId: openAiModel,
+				},
+				...fallbacks,
+			];
+		}
+
+		fallbacks = filterFallbacksForPrivacy(
 			request.modelClass,
-			route.fallbacks.map(applyConfiguredModel),
+			fallbacks,
 			DEFAULT_ROUTING_TABLE.constraints,
 		);
 		return [primary, ...fallbacks];
@@ -453,12 +506,24 @@ export class ModelGatewayService extends Disposable implements IModelGatewayServ
 						|| OPEN_AGENT_DEFAULT_OLLAMA_BASE_URL;
 					return `${configured.replace(/\/+$/, '')}/v1`;
 				}
-				if (target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.openai
-					|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.custom
-					|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.lmlink) {
-					return this._configurationService.getValue<string>(OpenAgentConfigKeys.openAiBaseUrl)
-						|| profile?.baseUrl
-						|| OPEN_AGENT_DEFAULT_OPENAI_BASE_URL;
+				const configuredOpenAiBase = this._configurationService.getValue<string>(OpenAgentConfigKeys.openAiBaseUrl);
+				// Prefer configured base URL for LM Studio / LM Link / llama.cpp / HF / Kaggle / cloud / custom.
+				if (configuredOpenAiBase?.trim()
+					&& (
+						target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.openai
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.custom
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.lmlink
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.lmstudio
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.llamacpp
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.huggingfaceCompatible
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.kaggleCompatible
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.openrouter
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.deepseek
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.groq
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.together
+						|| target.profileId === OPENAI_COMPATIBLE_PROFILE_IDS.fireworks
+					)) {
+					return configuredOpenAiBase.replace(/\/+$/, '');
 				}
 				return profile?.baseUrl || OPEN_AGENT_DEFAULT_OPENAI_BASE_URL;
 			}
