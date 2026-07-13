@@ -10,3 +10,5 @@
 | [ADR-0002](ADR-0002-docs-current-vs-target.md) | Split as-built docs (`current/`) from target docs (`target/`) | Accepted | 2026-07-13 |
 | [ADR-0003](ADR-0003-openagent-lance-shared-process.md) | Shared-process Lance vector store channel (minimal outside-contrib wiring) | Accepted | 2026-07-13 |
 | [ADR-0004](ADR-0004-telemetry-privacy-posture.md) | Upstream telemetry posture (sync-safe privacy) | Accepted | 2026-07-13 |
+
+When adding an ADR: update this table, keep IDs sequential, and link from [`../current/ARCHITECTURE.md`](../current/ARCHITECTURE.md) or [`../CONTRIBUTING.md`](../CONTRIBUTING.md) when the decision changes day-to-day workflow.

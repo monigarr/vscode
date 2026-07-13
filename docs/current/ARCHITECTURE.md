@@ -3,6 +3,7 @@
 **Status:** Current (must match code)
 **Owner:** MoniGarr.com LLC
 **Author:** Monica Peters \<monigarr@MoniGarr.com\>
+**Updated:** 2026-07-13
 **Canonical Path:** `docs/current/ARCHITECTURE.md`
 **Code root:** `src/vs/workbench/contrib/openagent/`
 **See Also:** [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) · [`API.md`](API.md) · [`../target/ARCHITECTURE.md`](../target/ARCHITECTURE.md)

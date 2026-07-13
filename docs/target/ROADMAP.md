@@ -68,7 +68,7 @@ Product refs: [LM Studio docs](https://lmstudio.ai/docs/app) · [LM Link](https:
 |------|-----|---------------|
 | Terminal log observation loop | 3.4 | `onData` capture with timeout |
 | Chat-integrated agent runs | 3.4 | `/agent` from chat |
-| HITL for write / shell | 3.4 | Dialog/callback approval |
+| HITL for write / shell / apply_patch | 3.4 | Dialog/callback approval |
 | Tool budgets & escalation | 3.4 | Max steps + stall escalate |
 
 ### Wave 4 — Provider completeness & privacy hardening (**Implemented**)
@@ -83,6 +83,10 @@ Product refs: [LM Studio docs](https://lmstudio.ai/docs/app) · [LM Link](https:
 | Index background chunk worker | 4 | `IWebWorkerService` chunk worker; embed remains host-side |
 
 ---
+
+## Done notes (2026-07-13)
+
+PRD closure on `dev`: profile picker drives local/embed/`code_specialist` routing; LM Studio base URL + health check; LM Studio embeddings follow selected local profile; `@git` bounded SCM diffs; Composer TextDiffEditor model sync; real unified-diff `apply_patch`; docs/`VERIFY` updated. Evidence: [`../current/IMPLEMENTATION_STATUS.md`](../current/IMPLEMENTATION_STATUS.md).
 
 ## How to update this roadmap
 

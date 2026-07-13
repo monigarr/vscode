@@ -7,4 +7,4 @@
 | **Target** (aspirational) | [`docs/target/ARCHITECTURE.md`](docs/target/ARCHITECTURE.md) |
 | **Current** (as-built) | [`docs/current/ARCHITECTURE.md`](docs/current/ARCHITECTURE.md) |
 
-Also: [`docs/target/PRD.md`](docs/target/PRD.md) · [`docs/README.md`](docs/README.md)
+Also: [`docs/target/PRD.md`](docs/target/PRD.md) · [`docs/current/IMPLEMENTATION_STATUS.md`](docs/current/IMPLEMENTATION_STATUS.md) · [`docs/README.md`](docs/README.md)

@@ -3,6 +3,7 @@
 **Status:** Current (operator / PM facing)
 **Owner:** MoniGarr.com LLC
 **Author:** Monica Peters \<monigarr@MoniGarr.com\>
+**Updated:** 2026-07-13
 **Canonical Path:** `docs/current/FEATURES.md`
 **See Also:** [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md) · [`../target/PRD.md`](../target/PRD.md) · [`../RUNBOOK.md`](../RUNBOOK.md)
 

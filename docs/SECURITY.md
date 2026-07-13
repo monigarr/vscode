@@ -3,6 +3,7 @@
 **Status:** Active
 **Owner:** MoniGarr.com LLC
 **Author:** Monica Peters \<monigarr@MoniGarr.com\>
+**Updated:** 2026-07-13
 **Canonical Path:** `docs/SECURITY.md`
 **See Also:** [`../MoniGarr_Engineering_Standards/Engineering/SECURITY.md`](../MoniGarr_Engineering_Standards/Engineering/SECURITY.md) · [`AI_ENGINEERING_GUIDELINES.md`](AI_ENGINEERING_GUIDELINES.md) · [`../src/vs/workbench/contrib/openagent/TELEMETRY.md`](../src/vs/workbench/contrib/openagent/TELEMETRY.md)
 
@@ -19,15 +20,18 @@ This document is **not** a certification, ATO, FedRAMP, or HIPAA evidence pack.
 | Asset | Risk | Control (as-built) |
 |-------|------|--------------------|
 | API keys | Theft via settings/logs | SecretStorage; never config properties |
-| Source in prompts | Leak to cloud providers | User chooses local vs BYOK; master flag off by default |
-| Agent file write | Destructive edits | HITL confirm dialog (or chat approve callback) before write/apply_patch |
-| Agent terminal | Arbitrary command execution | HITL confirm before run_terminal; bounded output capture timeout |
+| Source in prompts | Leak to cloud providers | User chooses local vs BYOK via profile picker; master flag off by default; local-first `code_specialist` when LM Studio/Ollama/LM Link selected |
+| Agent file write | Destructive edits | HITL confirm dialog (or chat approve callback) before `write_file` / `apply_patch` |
+| Agent patch apply | Malformed or hostile patch | Unified-diff parser fail-closed; HITL before write |
+| Agent terminal | Arbitrary command execution | HITL confirm before `run_terminal`; bounded output capture timeout |
 | Telemetry | Prompt/key exfil | `enableTelemetry: false` in product.json; local redacted `model.call` only in Open-Agent (ADR-0004) |
+| Endpoint misconfig | Silent cloud egress | Profile health check after F1 pick (warning on failure; settings still saved) |
 
 ## Fail-closed
 
 - `openagent.enabled` default **`false`**.
 - When disabled, gateway requests fail closed (no provider calls).
+- Malformed `apply_patch` payloads do not overwrite files with raw patch text.
 
 ## Secrets
 
@@ -40,7 +44,7 @@ Never commit `.env` files with real keys. Never log Authorization headers.
 
 ## Network
 
-Outbound HTTPS/HTTP only through registered providers when enabled. Prefer local Ollama (`127.0.0.1`) for air-gapped workflows.
+Outbound HTTPS/HTTP only through registered providers when enabled. Prefer local Ollama or LM Studio (`127.0.0.1`) for air-gapped workflows. LM Link traffic stays on the user’s private mesh — Open-Agent does not proxy through MoniGarr.
 
 ## Upstream VS Code telemetry
 

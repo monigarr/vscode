@@ -3,6 +3,7 @@
 **Status:** Current
 **Owner:** MoniGarr.com LLC
 **Author:** Monica Peters \<monigarr@MoniGarr.com\>
+**Updated:** 2026-07-13
 **Canonical Path:** `docs/current/API.md`
 **Code:** `src/vs/workbench/contrib/openagent/`
 **See Also:** [`ARCHITECTURE.md`](ARCHITECTURE.md) · [`../CONTRIBUTING.md`](../CONTRIBUTING.md)
@@ -81,8 +82,9 @@ From `common/openAgent.ts` (`OpenAgentConfigKeys`):
 | `openagent.vectorStore.backend` | `lance` (enum: `lance` \| `memory`) |
 | `openagent.routing.mappingVersion` | `mapping.v2` |
 | `openagent.requestTimeoutMs` | `60000` |
-| `openagent.inline.debounceMs` | `200` |
+| `openagent.inline.debounceMs` | `100` |
 | `openagent.agent.maxSteps` | `12` |
+| `openagent.agent.terminalTimeoutMs` | `8000` |
 
 ## Secrets
 
@@ -96,6 +98,9 @@ From `common/openAgent.ts` (`OpenAgentConfigKeys`):
 `ollama`, `openai`, `openrouter`, `deepseek`, `groq`, `together`, `fireworks`, `lmstudio`, `lmlink`, `llamacpp`, `huggingface_compatible`, `kaggle_compatible`, `custom` — see `common/profiles.ts`.
 
 **Override semantics:** `openagent.openai.profileId` is the operator-selected primary profile. When it is a local residency profile (`ollama` | `lmstudio` | `lmlink` | `llamacpp`), the gateway retargets `local_private`, `private_onprem`, `embed`, and primary `code_specialist` candidates to that profile and prefers `openagent.openai.baseUrl` (except Ollama, which uses `openagent.ollama.baseUrl`). Cloud profile selection retargets non-local openai-compatible pins only.
+
+F1 commands: **Open-Agent: Select Model Profile**, **Open-Agent: Configure LM Link Endpoint** (`browser/openAgentSettingsCommands.ts`) — each runs a non-blocking `/models` health check after save.
+
 ## View / contrib ids
 
 | Constant | Value |

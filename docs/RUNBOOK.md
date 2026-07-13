@@ -3,6 +3,7 @@
 **Status:** Active
 **Owner:** MoniGarr.com LLC
 **Author:** Monica Peters \<monigarr@MoniGarr.com\>
+**Updated:** 2026-07-13
 **Canonical Path:** `docs/RUNBOOK.md`
 **See Also:** [`SECURITY.md`](SECURITY.md) · [`current/FEATURES.md`](current/FEATURES.md) · [`../src/vs/workbench/contrib/openagent/TELEMETRY.md`](../src/vs/workbench/contrib/openagent/TELEMETRY.md)
 

@@ -3,6 +3,7 @@
 **Status:** Active
 **Owner:** MoniGarr.com LLC
 **Author:** Monica Peters \<monigarr@MoniGarr.com\>
+**Updated:** 2026-07-13
 **Canonical Path:** `docs/VERIFY.md`
 **See Also:** [`TESTING.md`](TESTING.md) · [`RUNBOOK.md`](RUNBOOK.md)
 

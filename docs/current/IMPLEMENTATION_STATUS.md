@@ -28,12 +28,12 @@
 
 ## Gaps closed (2026-07-13 PRD closure)
 
-| Gap | Evidence |
-|-----|----------|
+| Gap closed | Evidence |
+|------------|----------|
 | Profile picker did not drive egress | `modelGatewayService._buildCandidates` + `shouldOverrideProfilePin` |
 | LM Studio base URL ignored | `_baseUrlFor` reads `openagent.openai.baseUrl` for lmstudio/lmlink/etc. |
 | Health checks unused | `openAgentSettingsCommands` probes `/models` after pick |
-| LM Studio embeddings Partial | Embed class follows selected local profile; tests in `modelGatewayService.test.ts` |
+| LM Studio embeddings (was Partial) | Embed class follows selected local profile; tests in `modelGatewayService.test.ts` |
 | `@git` paths only | `_buildGitContext` adds bounded diffs via `getOriginalResource` / multi-diff URIs |
 | Composer diff buffers detached | `IModelService` models shared with opened diff editors |
 | `apply_patch` aliased write | `common/applyPatch.ts` + agent tool path |
